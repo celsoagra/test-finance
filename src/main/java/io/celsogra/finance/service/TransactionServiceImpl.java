@@ -8,7 +8,6 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import io.celsogra.finance.base.BlockchainBase;
@@ -30,64 +29,37 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Autowired
     private UTXOBase utxoBase;
-    
-    private static double MINIMUM_TRANSACTION = 0.000001d;
-        
-    @Async
+
     @Override
     public void createTransaction(TransactionDTO dto) {
         try {
             Transaction transaction = builder.build(dto);
-            
-            if (transaction == null) {
-                return;
-            }
-            
-            try {
-                if ((processTransaction(transaction) != true)) {
-                    return;
-                }
-            } catch (Exception e) {
-                return;
-            }
-            
-            blockchain.addTransaction(transaction);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | UnsupportedEncodingException e) {
+            this.createTransaction(transaction);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException e) {
             throw new RuntimeException();
         }
     }
-    
-    private boolean processTransaction(Transaction transaction) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
 
-        if (transaction.verifiySignature() == false) {
-            System.out.println("#Transaction Signature failed to verify");
-            return false;
+    @Override
+    public void createTransaction(Transaction transaction) {
+        if (transaction == null) {
+            return;
         }
-
-        for (TransactionInput input : transaction.getInputs()) {
-            input.setUTXO( utxoBase.get(input.getTransactionOutputId()) );
-        }
-
-        if (transaction.getInputsValue() < MINIMUM_TRANSACTION) {
-            System.out.println("#Transaction Inputs to small: " + transaction.getInputsValue());
-            return false;
-        }
-
-        transaction.processTransaction();
         
-        // add outputs to Unspent list
-        for (TransactionOutput o : transaction.getOutputs()) {
-            utxoBase.put(o.getId(), o);
+        try {
+            
+            if (!transaction.processTransaction(utxoBase.map())) {
+                return;
+            }
+        } catch (Exception e) {
+            return;
         }
 
-        // remove transaction inputs from UTXO lists as spent:
-        for (TransactionInput i : transaction.getInputs()) {
-            if (i.getUTXO() == null)
-                continue; // if Transaction can't be found skip it
-            utxoBase.remove(i.getUTXO().getId());
+        try {
+            blockchain.addTransaction(transaction);
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+            throw new RuntimeException();
         }
-
-        return true;
     }
 
 }

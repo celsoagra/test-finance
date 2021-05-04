@@ -1,6 +1,7 @@
 package io.celsogra.finance.controller;
 
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
 
 import javax.validation.Valid;
@@ -29,7 +30,7 @@ public class TransactionController {
 
     @PostMapping(value = "/transaction", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity createTransaction(@Valid @RequestBody TransactionDTO dto)
-            throws NoSuchAlgorithmException, InvalidKeySpecException {
+            throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
         log.info("TransactionController.createTransaction(TransactionDTO) - Params: {}", dto);
         walletService.validateBalance(dto.getSenderAsPubKey(), dto.getValue());
         transactionService.createTransaction(dto);

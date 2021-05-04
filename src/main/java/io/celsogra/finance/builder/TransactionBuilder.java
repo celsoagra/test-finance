@@ -6,6 +6,7 @@ import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,8 @@ public class TransactionBuilder {
     @Autowired
     private UTXOBase utxoBase;
 
-    public Transaction build(TransactionDTO dto) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    public Transaction build(TransactionDTO dto) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
+        
         double total = 0d;
         ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
         
@@ -44,7 +46,9 @@ public class TransactionBuilder {
             }
         }
 
-        return Transaction.create(dto.getSenderAsPubKey(), dto.getReceiverAsPubKey(), dto.getValue(), inputs);
+        Transaction transaction = Transaction.create(dto.getSenderAsPubKey(), dto.getReceiverAsPubKey(), dto.getValue(), inputs);
+        transaction.setSignature(Base64.getDecoder().decode(dto.getSignature()));
+        return transaction;
     }
     
     public Transaction buildGenesis() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {

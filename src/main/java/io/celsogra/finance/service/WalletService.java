@@ -6,6 +6,8 @@ public interface WalletService {
 
     double balance(PublicKey wallet);
     
+    double faucet(String wallet);
+    
     void validateBalance(PublicKey wallet, double value);
     
 }

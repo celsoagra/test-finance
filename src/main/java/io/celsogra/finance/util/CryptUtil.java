@@ -93,10 +93,6 @@ public class CryptUtil {
         return (treeLayer.size() == 1) ? treeLayer.get(0) : ""; // merkleRoot
     }
 
-//    public static String getJson(Object o) {
-//        return new GsonBuilder().setPrettyPrinting().create().toJson(o);
-//    }
-
     public static String getDificultyString(int difficulty) {
         return new String(new char[difficulty]).replace('\0', '0');
     }

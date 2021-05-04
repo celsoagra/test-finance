@@ -44,8 +44,6 @@ public class BlockchainBase {
         block.addTransaction(transaction);
         this.lastBlock = block;
         blockchain.add(block);
-
-        log.info("added block: {}", transaction);
     }
 
 }

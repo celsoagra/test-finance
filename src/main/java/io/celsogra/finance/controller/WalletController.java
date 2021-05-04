@@ -31,19 +31,27 @@ public class WalletController {
     private WalletService walletService;
 
     @GetMapping(value = "/coinbase", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map> getCoinbase()
+    public ResponseEntity<Map> coinbase()
             throws NoSuchAlgorithmException, InvalidKeySpecException {
-        log.info("CoinbaseController.getCoinbase()");
+        log.info("WalletController.coinbase()");
         return ResponseEntity.status(HttpStatus.OK)
                 .body(Collections.singletonMap("id", coinBase.getPublicKeyAsString()));
     }
     
     @PostMapping(value = "/balance", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map> getBalanceWallet(@RequestBody WalletDTO wallet)
+    public ResponseEntity<Map> balance(@RequestBody WalletDTO wallet)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
-        log.info("CoinbaseController.getCoinbase()");
+        log.info("WalletController.balance()");
         return ResponseEntity.status(HttpStatus.OK)
                 .body(Collections.singletonMap("balance", walletService.balance(CryptUtil.getKeyFromString(wallet.getId())) ) );
+    }
+    
+    @PostMapping(value = "/faucet", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map> faucet(@RequestBody WalletDTO wallet)
+            throws NoSuchAlgorithmException, InvalidKeySpecException {
+        log.info("WalletController.getCoinbase()");
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(Collections.singletonMap("got", walletService.faucet(wallet.getId()) ) );
     }
 
 }

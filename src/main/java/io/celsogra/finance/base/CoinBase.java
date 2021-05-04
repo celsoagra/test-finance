@@ -18,20 +18,20 @@ import org.springframework.stereotype.Component;
 public class CoinBase {
     
     @Value("${app.default.coin.genesis}")
-    private int genesisCoins;
+    private double genesisCoins;
     
     @Value("${app.default.coin.faucet}")
-    private int faucetCoins;
+    private double faucetCoins;
 
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private boolean generated = false;
     
-    public int getCoinsFromGenesis() {
+    public double getCoinsFromGenesis() {
         return genesisCoins;
     }
     
-    public int getCoinsFromFaucet() {
+    public double getCoinsFromFaucet() {
         return faucetCoins;
     }
 
