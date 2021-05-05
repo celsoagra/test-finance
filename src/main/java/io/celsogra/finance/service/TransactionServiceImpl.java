@@ -33,7 +33,7 @@ public class TransactionServiceImpl implements TransactionService {
     private UTXOBase utxoBase;
 
     @Override
-    public void createTransaction(TransactionDTO dto) {
+    public void addToBlock(TransactionDTO dto) {
         try {
             Transaction transaction = builder.build(dto);
             this.addToBlock(transaction);

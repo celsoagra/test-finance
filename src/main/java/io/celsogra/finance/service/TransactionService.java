@@ -10,7 +10,7 @@ import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 
 public interface TransactionService {
-    void createTransaction(TransactionDTO dto);
+    void addToBlock(TransactionDTO dto);
     
     void addToBlock(Transaction transaction) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException, NoSuchProviderException, SignatureException;
 }

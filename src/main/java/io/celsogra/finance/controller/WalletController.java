@@ -1,9 +1,12 @@
 package io.celsogra.finance.controller;
 
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Collections;
 import java.util.Map;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.celsogra.finance.base.CoinBase;
+import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.dto.WalletDTO;
+import io.celsogra.finance.service.TransactionService;
 import io.celsogra.finance.service.WalletService;
 import io.celsogra.finance.util.CryptUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +34,9 @@ public class WalletController {
     
     @Autowired
     private WalletService walletService;
+    
+    @Autowired
+    private TransactionService transactionService;
 
     @GetMapping(value = "/coinbase", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map> coinbase()
@@ -52,6 +60,16 @@ public class WalletController {
         log.info("WalletController.getCoinbase()");
         return ResponseEntity.status(HttpStatus.OK)
                 .body(Collections.singletonMap("got", walletService.faucet(wallet.getId()) ) );
+    }
+    
+    @PostMapping(value = "/transaction", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity createTransaction(@Valid @RequestBody TransactionDTO dto)
+            throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
+        log.info("TransactionController.createTransaction(TransactionDTO) - Params: {}", dto);
+        walletService.validateBalance(dto.getSenderAsPubKey(), dto.getValue());
+        transactionService.addToBlock(dto);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(Collections.singletonMap("msg", HttpStatus.OK.name() ) );
     }
 
 }
