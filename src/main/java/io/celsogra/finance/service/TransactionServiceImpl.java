@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import io.celsogra.finance.base.BlockchainBase;
+import io.celsogra.finance.base.CoinBase;
 import io.celsogra.finance.base.UTXOBase;
 import io.celsogra.finance.builder.TransactionBuilder;
 import io.celsogra.finance.dto.TransactionDTO;
@@ -28,6 +29,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Autowired
     private BlockchainBase blockchain;
+    
+    @Autowired
+    private CoinBase coinBase;
 
     @Autowired
     private UTXOBase utxoBase;
@@ -71,6 +75,12 @@ public class TransactionServiceImpl implements TransactionService {
         
         TransactionOutput sendLeftOverToSender = new TransactionOutput(transaction.getSender(), leftOver, transaction.getTransactionId());
         utxoBase.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
+        
+        if (!transaction.getSender().equals(coinBase.getPublicKey())) { // don't create coins on faucet
+            // Create new coins from each transaction
+            TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
+            utxoBase.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);           
+        }
 
         // remove transaction inputs from UTXO lists as spent:
         for (TransactionInput i : transaction.getInputs()) {
