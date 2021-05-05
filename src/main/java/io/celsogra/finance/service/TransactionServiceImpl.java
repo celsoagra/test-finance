@@ -76,6 +76,13 @@ public class TransactionServiceImpl implements TransactionService {
         TransactionOutput sendLeftOverToSender = new TransactionOutput(transaction.getSender(), leftOver, transaction.getTransactionId());
         utxoBase.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
         
+        // TODO added a way to apply some taxes in transaction
+        /*
+         * Os inputs de uma transação serão outputs de outras.
+         * Ver a maneira como isso se comporta visto que "utxoBase" não faz parte do blockchain e pode ser facilmente adulterado
+         * além disso, deve ser add inputs e outputs na blockchain 
+         */
+        
         if (!transaction.getSender().equals(coinBase.getPublicKey())) { // don't create coins on faucet
             // Create new coins from each transaction
             TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
