@@ -1,5 +1,6 @@
 package io.celsogra.finance.service;
 
+import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import io.celsogra.finance.base.CoinBase;
 import io.celsogra.finance.base.UTXOBase;
+import io.celsogra.finance.builder.TransactionBuilder;
 import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.entity.TransactionInput;
@@ -33,13 +35,16 @@ public class WalletServiceImpl implements WalletService {
     
     @Autowired
     private CoinBase coinBase;
+    
+    @Autowired
+    private TransactionBuilder transactionBuilder;
 
     public double balance(PublicKey wallet) {
         double total = 0;
 
         for (Map.Entry<String, TransactionOutput> item : utxoBase.entries()) {
             TransactionOutput utxo = item.getValue();
-            if (utxo.isMine(wallet)) {
+            if (utxo.belongsTo(wallet)) {
                 total += utxo.getValue();
             }
         }
@@ -48,31 +53,34 @@ public class WalletServiceImpl implements WalletService {
     }
 
     public double faucet(String wallet) {
+        PublicKey sender = coinBase.getPublicKey();
+        PublicKey reciepient = CryptUtil.getKeyFromString(wallet);
+        double value = coinBase.getCoinsFromFaucet();
+
+        // TODO duplicated
         double total = 0d;
         ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
         
         for (Map.Entry<String, TransactionOutput> item : utxoBase.entries()) {
             TransactionOutput utxo = item.getValue();
             
-            if( !utxo.isMine(coinBase.getPublicKey()) ) {
-                continue;
+            if( utxo.belongsTo(sender) ) {
+                total += utxo.getValue();
+                inputs.add( TransactionInput.builder().transactionOutputId(utxo.getId()).utxo(utxo).build() );
+                if (total > value) {
+                    break;
+                }
             }
             
-            total += utxo.getValue();
-            inputs.add(new TransactionInput(utxo.getId()));
-            if (total > coinBase.getCoinsFromFaucet()) {
-                break;
-            }
         }
-        
-        log.info("faucet inputs: {}", inputs);
+        // TODO end duplicated
         
         try {
-            Transaction transaction = Transaction.create(coinBase.getPublicKey(), CryptUtil.getKeyFromString(wallet), coinBase.getCoinsFromFaucet(), inputs);
+            Transaction transaction = Transaction.create(sender, reciepient, value, inputs);
             transaction.generateSignature(coinBase.getPrivateKey());
-            transactionService.createTransaction(transaction);
-            return coinBase.getCoinsFromFaucet();
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException e) {
+            transactionService.addToBlock(transaction);
+            return value;
+        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException | UnsupportedEncodingException e) {
             return 0.0d;
         }
     }

@@ -21,6 +21,8 @@ import io.celsogra.finance.entity.TransactionOutput;
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
+    private static double MINIMUM_TRANSACTION = 0.000001d;
+    
     @Autowired
     private TransactionBuilder builder;
 
@@ -34,32 +36,49 @@ public class TransactionServiceImpl implements TransactionService {
     public void createTransaction(TransactionDTO dto) {
         try {
             Transaction transaction = builder.build(dto);
-            this.createTransaction(transaction);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException e) {
+            this.addToBlock(transaction);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException | UnsupportedEncodingException | InvalidKeyException | SignatureException e) {
             throw new RuntimeException();
         }
     }
-
-    @Override
-    public void createTransaction(Transaction transaction) {
-        if (transaction == null) {
+    
+    public void addToBlock(Transaction transaction) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException, NoSuchProviderException, SignatureException {
+        if (transaction == null) return;
+        
+        if(!process(transaction)) {
             return;
         }
         
-        try {
-            
-            if (!transaction.processTransaction(utxoBase.map())) {
-                return;
-            }
-        } catch (Exception e) {
-            return;
+        blockchain.addTransaction(transaction);
+    }
+    
+    private boolean process(Transaction transaction) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException {
+        if (transaction.verifiySignature() == false) {
+            System.out.println("#Transaction Signature failed to verify");
+            return false;
         }
+        
+        if (transaction.getInputsValue() < MINIMUM_TRANSACTION) {
+            System.out.println("#Transaction Inputs to small: " + transaction.getInputsValue());
+            return false;
+        }
+        
+        double leftOver = transaction.getInputsValue() - transaction.getValue();
+        transaction.setTransactionId(transaction.calulateHash());
+        
+        TransactionOutput sendValueToRecipient = new TransactionOutput(transaction.getReciepient(), transaction.getValue(), transaction.getTransactionId());
+        utxoBase.put(sendValueToRecipient.getId(), sendValueToRecipient);
+        
+        TransactionOutput sendLeftOverToSender = new TransactionOutput(transaction.getSender(), leftOver, transaction.getTransactionId());
+        utxoBase.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
 
-        try {
-            blockchain.addTransaction(transaction);
-        } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-            throw new RuntimeException();
+        // remove transaction inputs from UTXO lists as spent:
+        for (TransactionInput i : transaction.getInputs()) {
+            if (i.getUtxo() == null) continue;
+            utxoBase.remove(i.getUtxo().getId());
         }
+        
+        return true;
     }
 
 }

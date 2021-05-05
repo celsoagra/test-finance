@@ -3,6 +3,7 @@ package io.celsogra.finance.builder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -35,15 +36,15 @@ public class TransactionBuilder {
         
         for (Map.Entry<String, TransactionOutput> item : utxoBase.entries()) {
             TransactionOutput utxo = item.getValue();
-            if( !utxo.isMine(dto.getSenderAsPubKey()) ) {
-                continue;
+            
+            if( utxo.belongsTo(dto.getSenderAsPubKey()) ) {
+                total += utxo.getValue();
+                inputs.add( TransactionInput.builder().transactionOutputId(utxo.getId()).utxo(utxo).build() );
+                if (total > dto.getValue()) {
+                    break;
+                }
             }
             
-            total += utxo.getValue();
-            inputs.add(new TransactionInput(utxo.getId()));
-            if (total > dto.getValue()) {
-                break;
-            }
         }
 
         Transaction transaction = Transaction.create(dto.getSenderAsPubKey(), dto.getReceiverAsPubKey(), dto.getValue(), inputs);
@@ -52,6 +53,7 @@ public class TransactionBuilder {
     }
     
     public Transaction buildGenesis() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+        
         Transaction genesis = Transaction.create(coinBase.getPublicKey(), coinBase.getPublicKey(), coinBase.getCoinsFromGenesis(), null);
         genesis.generateSignature(coinBase.getPrivateKey());
         genesis.setTransactionId("0");

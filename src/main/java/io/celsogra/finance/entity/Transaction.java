@@ -8,7 +8,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import io.celsogra.finance.util.CryptUtil;
 import lombok.Data;
@@ -17,7 +16,6 @@ import lombok.ToString;
 @Data
 @ToString
 public class Transaction {
-    private static double MINIMUM_TRANSACTION = 0.000001d;
     
     private String transactionId;
     private PublicKey sender;
@@ -26,7 +24,6 @@ public class Transaction {
     private byte[] signature;
 
     private ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
-    private ArrayList<TransactionOutput> outputs = new ArrayList<TransactionOutput>();
 
     private static int sequence = 0;
 
@@ -41,7 +38,7 @@ public class Transaction {
         this.inputs = inputs;
     }
 
-    private String calulateHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public String calulateHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
         String input = CryptUtil.getStringFromKey(sender) + CryptUtil.getStringFromKey(reciepient)
                 + Double.toString(value) + ++sequence;
         return CryptUtil.applySha256(input);
@@ -65,70 +62,11 @@ public class Transaction {
         double total = 0;
         for (TransactionInput input : inputs) {
             
-            if (input.getUTXO() == null)
+            if (input.getUtxo() == null)
                 continue; // if Transaction can't be found skip it
-            total += input.getUTXO().getValue();
+            total += input.getUtxo().getValue();
         }
         return total;
-    }
-
-    // returns sum of outputs:
-    public double getOutputsValue() {
-        double total = 0;
-        for (TransactionOutput o : outputs) {
-            total += o.getValue();
-        }
-        return total;
-    }
-    
-    // FIXME
-    public boolean processTransaction(HashMap<String,TransactionOutput> UTXOs) {
-
-        try {
-            if (!verifiySignature()) {
-                System.out.println("#Transaction Signature failed to verify");
-                return false;
-            }
-            
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException e1) {
-            return false;
-        }
-
-        for (TransactionInput i : inputs) {
-            i.setUTXO(UTXOs.get(i.getTransactionOutputId()));
-        }
-
-        // check if transaction is valid:
-        if (getInputsValue() < MINIMUM_TRANSACTION) {
-            System.out.println("#Transaction Inputs to small: " + getInputsValue());
-            return false;
-        }
-
-        // generate transaction outputs:
-        double leftOver = getInputsValue() - value; // get value of inputs then the left over change:
-        
-        try {
-            transactionId = calulateHash();
-            outputs.add(new TransactionOutput(this.reciepient, value, transactionId)); // send value to recipient
-            outputs.add(new TransactionOutput(this.sender, leftOver, transactionId)); // send the left over 'change' back to
-        } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-            throw new RuntimeException();
-        }
-                                                                                  // sender
-
-        // add outputs to Unspent list
-        for (TransactionOutput o : outputs) {
-            UTXOs.put(o.getId(), o);
-        }
-
-        // remove transaction inputs from UTXO lists as spent:
-        for (TransactionInput i : inputs) {
-            if (i.getUTXO() == null)
-                continue; // if Transaction can't be found skip it
-            UTXOs.remove(i.getUTXO().getId());
-        }
-
-        return true;
     }
 
 }

@@ -25,7 +25,7 @@ public class TransactionOutput {
                 .applySha256(CryptUtil.getStringFromKey(reciepient) + Double.toString(value) + parentTransactionId);
     }
 
-    public boolean isMine(PublicKey publicKey) {
+    public boolean belongsTo(PublicKey publicKey) {
         return (publicKey.equals(reciepient));
     }
 }

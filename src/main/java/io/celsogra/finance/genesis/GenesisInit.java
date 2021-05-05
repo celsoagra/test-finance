@@ -37,10 +37,9 @@ public class GenesisInit {
 
         Transaction genesis = TransactionBuilder.buildGenesis();
         TransactionOutput ouput = new TransactionOutput(genesis.getReciepient(), genesis.getValue(), genesis.getTransactionId());
-
-        genesis.getOutputs().add(ouput);
         utxoBase.put(ouput.getId(), ouput);
         blockchainBase.addGenesisTransaction(genesis);
+        
     }
 
 }
