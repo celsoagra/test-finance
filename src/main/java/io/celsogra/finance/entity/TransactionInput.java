@@ -1,5 +1,7 @@
 package io.celsogra.finance.entity;
 
+import java.io.Serializable;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +13,7 @@ import lombok.ToString;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class TransactionInput {
+public class TransactionInput implements Serializable {
     private String transactionOutputId; // Reference to TransactionOutputs -> transactionId
     private TransactionOutput utxo; // Contains the Unspent transaction output
 }

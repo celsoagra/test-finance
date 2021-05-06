@@ -1,5 +1,6 @@
 package io.celsogra.finance.entity;
 
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -10,7 +11,7 @@ import lombok.ToString;
 
 @Data
 @ToString
-public class TransactionOutput {
+public class TransactionOutput implements Serializable {
     private String id;
     private PublicKey reciepient;
     private double value;

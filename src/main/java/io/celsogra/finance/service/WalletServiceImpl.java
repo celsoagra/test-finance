@@ -7,16 +7,16 @@ import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import io.celsogra.finance.base.Blockchain;
 import io.celsogra.finance.base.CoinBase;
-import io.celsogra.finance.base.UTXOBase;
 import io.celsogra.finance.builder.TransactionBuilder;
-import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.entity.TransactionInput;
 import io.celsogra.finance.entity.TransactionOutput;
@@ -26,12 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class WalletServiceImpl implements WalletService {
-
-    @Autowired
-    private UTXOBase utxoBase;
     
     @Autowired
     private TransactionService transactionService;
+    
+    @Autowired
+    private Blockchain blockchain;
     
     @Autowired
     private CoinBase coinBase;
@@ -40,9 +40,10 @@ public class WalletServiceImpl implements WalletService {
     private TransactionBuilder transactionBuilder;
 
     public double balance(PublicKey wallet) {
+        Set<Entry<String, TransactionOutput>> entries = blockchain.getLastBlock().getTransactionOutputEntries();
         double total = 0;
 
-        for (Map.Entry<String, TransactionOutput> item : utxoBase.entries()) {
+        for (Map.Entry<String, TransactionOutput> item : entries) {
             TransactionOutput utxo = item.getValue();
             if (utxo.belongsTo(wallet)) {
                 total += utxo.getValue();
@@ -60,8 +61,9 @@ public class WalletServiceImpl implements WalletService {
         // TODO duplicated
         double total = 0d;
         ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
+        Set<Entry<String, TransactionOutput>> entries = blockchain.getLastBlock().getTransactionOutputEntries();
         
-        for (Map.Entry<String, TransactionOutput> item : utxoBase.entries()) {
+        for (Map.Entry<String, TransactionOutput> item : entries) {
             TransactionOutput utxo = item.getValue();
             
             if( utxo.belongsTo(sender) ) {
@@ -84,7 +86,7 @@ public class WalletServiceImpl implements WalletService {
             return 0.0d;
         }
     }
-    
+
     public void validateBalance(PublicKey wallet, double value) {
         if (value > this.balance(wallet)) {
             throw new RuntimeException("not enough money");

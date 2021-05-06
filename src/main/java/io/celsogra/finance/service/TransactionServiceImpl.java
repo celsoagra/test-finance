@@ -6,13 +6,14 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.celsogra.finance.base.BlockchainBase;
+import io.celsogra.finance.base.Blockchain;
 import io.celsogra.finance.base.CoinBase;
-import io.celsogra.finance.base.UTXOBase;
 import io.celsogra.finance.builder.TransactionBuilder;
 import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
@@ -23,18 +24,16 @@ import io.celsogra.finance.entity.TransactionOutput;
 public class TransactionServiceImpl implements TransactionService {
 
     private static double MINIMUM_TRANSACTION = 0.000001d;
+    private static double NUMBER_OF_DECIMALS = 6;
     
     @Autowired
     private TransactionBuilder builder;
 
     @Autowired
-    private BlockchainBase blockchain;
+    private Blockchain blockchain;
     
     @Autowired
     private CoinBase coinBase;
-
-    @Autowired
-    private UTXOBase utxoBase;
 
     @Override
     public void addToBlock(TransactionDTO dto) {
@@ -49,53 +48,56 @@ public class TransactionServiceImpl implements TransactionService {
     public void addToBlock(Transaction transaction) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException, NoSuchProviderException, SignatureException {
         if (transaction == null) return;
         
-        if(!process(transaction)) {
+        Map<String,TransactionOutput> utxos = processAndGetUtxos(transaction);
+        if(Objects.isNull(utxos)) {
             return;
         }
         
-        blockchain.addTransaction(transaction);
+        blockchain.addTransaction(transaction, utxos);
     }
     
-    private boolean process(Transaction transaction) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException {
+    private Map<String,TransactionOutput> processAndGetUtxos(Transaction transaction) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException {
+        Map<String,TransactionOutput> utxos = blockchain.cloneUTXOs();
+        
         if (transaction.verifiySignature() == false) {
             System.out.println("#Transaction Signature failed to verify");
-            return false;
+            return null;
         }
         
-        if (transaction.getInputsValue() < MINIMUM_TRANSACTION) {
+        double inputValue = transaction.getInputsValue();
+        if (inputValue < MINIMUM_TRANSACTION) {
             System.out.println("#Transaction Inputs to small: " + transaction.getInputsValue());
-            return false;
+            return null;
+        }
+
+        String[] splitter = Double.valueOf(inputValue).toString().split("\\.");
+        if (splitter.length > 1 && splitter[1].length() > NUMBER_OF_DECIMALS) {
+            System.out.println("#Transaction Inputs must have decimals: " + NUMBER_OF_DECIMALS);
+            return null;
         }
         
         double leftOver = transaction.getInputsValue() - transaction.getValue();
         transaction.setTransactionId(transaction.calulateHash());
         
         TransactionOutput sendValueToRecipient = new TransactionOutput(transaction.getReciepient(), transaction.getValue(), transaction.getTransactionId());
-        utxoBase.put(sendValueToRecipient.getId(), sendValueToRecipient);
+        utxos.put(sendValueToRecipient.getId(), sendValueToRecipient);
         
         TransactionOutput sendLeftOverToSender = new TransactionOutput(transaction.getSender(), leftOver, transaction.getTransactionId());
-        utxoBase.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
-        
-        // TODO added a way to apply some taxes in transaction
-        /*
-         * Os inputs de uma transação serão outputs de outras.
-         * Ver a maneira como isso se comporta visto que "utxoBase" não faz parte do blockchain e pode ser facilmente adulterado
-         * além disso, deve ser add inputs e outputs na blockchain 
-         */
-        
+        utxos.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
+                
         if (!transaction.getSender().equals(coinBase.getPublicKey())) { // don't create coins on faucet
             // Create new coins from each transaction
             TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
-            utxoBase.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);           
+            utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);           
         }
 
         // remove transaction inputs from UTXO lists as spent:
         for (TransactionInput i : transaction.getInputs()) {
             if (i.getUtxo() == null) continue;
-            utxoBase.remove(i.getUtxo().getId());
+            utxos.remove(i.getUtxo().getId());
         }
         
-        return true;
+        return utxos;
     }
 
 }
