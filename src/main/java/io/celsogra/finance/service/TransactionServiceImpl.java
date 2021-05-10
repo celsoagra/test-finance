@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import io.celsogra.finance.base.Blockchain;
@@ -22,9 +23,12 @@ import io.celsogra.finance.entity.TransactionOutput;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
-
-    private static double MINIMUM_TRANSACTION = 0.000001d;
-    private static double NUMBER_OF_DECIMALS = 6;
+    
+    @Value("${app.default.coin.limit_decimals}")
+    private double numberOfDecimals;
+    
+    @Value("${app.default.coin.minimum_transaction}")
+    private double minimumTransaction;
     
     @Autowired
     private TransactionBuilder builder;
@@ -65,31 +69,38 @@ public class TransactionServiceImpl implements TransactionService {
         }
         
         double inputValue = transaction.getInputsValue();
-        if (inputValue < MINIMUM_TRANSACTION) {
+        if (inputValue < minimumTransaction) {
             System.out.println("#Transaction Inputs to small: " + transaction.getInputsValue());
             return null;
         }
 
         String[] splitter = Double.valueOf(inputValue).toString().split("\\.");
-        if (splitter.length > 1 && splitter[1].length() > NUMBER_OF_DECIMALS) {
-            System.out.println("#Transaction Inputs must have decimals: " + NUMBER_OF_DECIMALS);
+        if (splitter.length > 1 && splitter[1].length() > numberOfDecimals) {
+            System.out.println("#Transaction Inputs must have decimals: " + numberOfDecimals);
             return null;
         }
         
-        double leftOver = transaction.getInputsValue() - transaction.getValue();
-        transaction.setTransactionId(transaction.calulateHash());
         
+        double leftOver = transaction.getInputsValue() - transaction.getValue();
+        
+        transaction.setTransactionId(transaction.calulateHash());
+                
+        // coins are not created in faucet. They're created from each transaction
+        if (!transaction.getSender().equals(coinBase.getPublicKey())) {
+            leftOver -= coinBase.getTaxToBePayed(); // sender must pay some tax to coinbase
+            
+            TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
+            utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);
+            
+            TransactionOutput taxToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getTaxToBePayed(), transaction.getTransactionId());
+            utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);
+        }
+
         TransactionOutput sendValueToRecipient = new TransactionOutput(transaction.getReciepient(), transaction.getValue(), transaction.getTransactionId());
         utxos.put(sendValueToRecipient.getId(), sendValueToRecipient);
         
         TransactionOutput sendLeftOverToSender = new TransactionOutput(transaction.getSender(), leftOver, transaction.getTransactionId());
         utxos.put(sendLeftOverToSender.getId(), sendLeftOverToSender);
-                
-        if (!transaction.getSender().equals(coinBase.getPublicKey())) { // don't create coins on faucet
-            // Create new coins from each transaction
-            TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
-            utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);           
-        }
 
         // remove transaction inputs from UTXO lists as spent:
         for (TransactionInput i : transaction.getInputs()) {

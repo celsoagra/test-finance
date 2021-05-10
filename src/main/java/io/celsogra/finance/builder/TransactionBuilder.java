@@ -3,6 +3,7 @@ package io.celsogra.finance.builder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.entity.TransactionInput;
 import io.celsogra.finance.entity.TransactionOutput;
+import io.celsogra.finance.util.CryptUtil;
 
 @Component
 public class TransactionBuilder {
@@ -31,37 +33,52 @@ public class TransactionBuilder {
     private Blockchain blockchain;
 
     public Transaction build(TransactionDTO dto) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
-        Set<Entry<String, TransactionOutput>> entries = blockchain.getLastBlock().getTransactionOutputEntries();
-        
-        double total = 0d;
-        ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
-        
-        for (Map.Entry<String, TransactionOutput> item : entries) {
-            TransactionOutput utxo = item.getValue();
-            
-            if( utxo.belongsTo(dto.getSenderAsPubKey()) ) {
-                total += utxo.getValue();
-                inputs.add( TransactionInput.builder().transactionOutputId(utxo.getId()).utxo(utxo).build() );
-                if (total > dto.getValue()) {
-                    break;
-                }
-            }
-            
-        }
-
+        double totalToSpend = dto.getValue() + coinBase.getTaxToBePayed();
+        PublicKey sender = dto.getSenderAsPubKey();
+        ArrayList<TransactionInput> inputs = getOutuputsAndReturnInputs(sender, totalToSpend);
         Transaction transaction = Transaction.create(dto.getSenderAsPubKey(), dto.getReceiverAsPubKey(), dto.getValue(), inputs);
         transaction.setSignature(Base64.getDecoder().decode(dto.getSignature()));
         return transaction;
     }
     
     public Transaction buildGenesis() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
-        
         Transaction genesis = Transaction.create(coinBase.getPublicKey(), coinBase.getPublicKey(), coinBase.getCoinsFromGenesis(), null);
         genesis.generateSignature(coinBase.getPrivateKey());
         genesis.setTransactionId("0");
         return genesis;
-        
     }
     
+    public Transaction buildFaucet(String wallet) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+        PublicKey sender = coinBase.getPublicKey();
+        PublicKey reciepient = CryptUtil.getKeyFromString(wallet);
+        double totalToSpend = coinBase.getCoinsFromFaucet();
+        ArrayList<TransactionInput> inputs = getOutuputsAndReturnInputs(sender, totalToSpend);
+        Transaction transaction = Transaction.create(sender, reciepient, totalToSpend, inputs);
+        transaction.generateSignature(coinBase.getPrivateKey());
+        return transaction;
+    }
     
+    private ArrayList<TransactionInput> getOutuputsAndReturnInputs(PublicKey sender, double totalToSpend) {
+        ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
+        Set<Entry<String, TransactionOutput>> entries = blockchain.getLastBlock().getTransactionOutputEntries();
+        double total = 0d;
+        
+        for (Map.Entry<String, TransactionOutput> item : entries) {
+            TransactionOutput utxo = item.getValue();
+            
+            if( utxo.belongsTo(sender) ) {
+                total += utxo.getValue();
+                inputs.add( TransactionInput.builder().transactionOutputId(utxo.getId()).utxo(utxo).build() );
+                if (total > totalToSpend) {
+                    break;
+                }
+            }
+        }
+        
+        if (total < totalToSpend) {
+            
+        }
+        
+        return inputs;
+    }
 }

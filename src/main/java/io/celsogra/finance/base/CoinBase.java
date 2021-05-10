@@ -22,10 +22,17 @@ public class CoinBase {
     
     @Value("${app.default.coin.faucet}")
     private double faucetCoins;
+    
+    @Value("${app.default.coin.tax}")
+    private double taxToBePayed;
 
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private boolean generated = false;
+    
+    public double getTaxToBePayed() {
+        return taxToBePayed;
+    }
     
     public double getCoinsFromGenesis() {
         return genesisCoins;
