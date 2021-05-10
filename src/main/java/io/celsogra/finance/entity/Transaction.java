@@ -39,21 +39,19 @@ public class Transaction implements Serializable {
         this.inputs = inputs;
     }
 
-    public String calulateHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public String calulateHash() {
         String input = CryptUtil.getStringFromKey(sender) + CryptUtil.getStringFromKey(reciepient)
                 + Double.toString(value) + ++sequence;
         return CryptUtil.applySha256(input);
     }
 
-    public void generateSignature(PrivateKey privateKey)
-            throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+    public void generateSignature(PrivateKey privateKey) {
         String data = CryptUtil.getStringFromKey(sender) + CryptUtil.getStringFromKey(reciepient)
                 + Double.toString(value);
         signature = CryptUtil.applyECDSASig(privateKey, data);
     }
 
-    public boolean verifiySignature()
-            throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException {
+    public boolean verifiySignature() {
         String data = CryptUtil.getStringFromKey(sender) + CryptUtil.getStringFromKey(reciepient)
                 + Double.toString(value);
         return CryptUtil.verifyECDSASig(sender, data, signature);

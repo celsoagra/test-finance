@@ -34,8 +34,7 @@ public class Blockchain {
         return this.lastBlock;
     }
 
-    public void addGenesisTransaction(Transaction transaction)
-            throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public void addGenesisTransaction(Transaction transaction) {
         TransactionOutput ouput = new TransactionOutput(transaction.getReciepient(), transaction.getValue(), transaction.getTransactionId());
         
         Block block = Block.create("0");
@@ -47,7 +46,7 @@ public class Blockchain {
         blockchain.add(block);
     }
 
-    public void addTransaction(Transaction transaction, Map<String,TransactionOutput> utxos) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public void addTransaction(Transaction transaction, Map<String,TransactionOutput> utxos) {
         Block block = Block.create(lastBlock.getHash());
         block.addTransaction(transaction);
         block.setUtxos(utxos);

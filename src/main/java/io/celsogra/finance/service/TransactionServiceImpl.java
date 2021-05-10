@@ -1,11 +1,5 @@
 package io.celsogra.finance.service;
 
-import java.io.UnsupportedEncodingException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SignatureException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Objects;
 
@@ -20,6 +14,8 @@ import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.entity.TransactionInput;
 import io.celsogra.finance.entity.TransactionOutput;
+import io.celsogra.finance.exception.DecimalsAllowedTransactionException;
+import io.celsogra.finance.exception.MinimumTransactionException;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -41,15 +37,20 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public void addToBlock(TransactionDTO dto) {
-        try {
-            Transaction transaction = builder.build(dto);
-            this.addToBlock(transaction);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException | UnsupportedEncodingException | InvalidKeyException | SignatureException e) {
-            throw new RuntimeException();
+        if (dto.getValue() < minimumTransaction) {
+            throw new MinimumTransactionException();
         }
+        
+        String[] splitter = Double.valueOf(dto.getValue()).toString().split("\\.");
+        if (splitter.length > 1 && splitter[1].length() > numberOfDecimals) {
+            throw new DecimalsAllowedTransactionException();
+        }
+        
+        Transaction transaction = builder.build(dto);
+        this.addToBlock(transaction);
     }
     
-    public void addToBlock(Transaction transaction) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException, NoSuchProviderException, SignatureException {
+    public void addToBlock(Transaction transaction) {
         if (transaction == null) return;
         
         Map<String,TransactionOutput> utxos = processAndGetUtxos(transaction);
@@ -60,7 +61,7 @@ public class TransactionServiceImpl implements TransactionService {
         blockchain.addTransaction(transaction, utxos);
     }
     
-    private Map<String,TransactionOutput> processAndGetUtxos(Transaction transaction) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException {
+    private Map<String,TransactionOutput> processAndGetUtxos(Transaction transaction) {
         Map<String,TransactionOutput> utxos = blockchain.cloneUTXOs();
         
         if (transaction.verifiySignature() == false) {
@@ -80,19 +81,13 @@ public class TransactionServiceImpl implements TransactionService {
             return null;
         }
         
-        
         double leftOver = transaction.getInputsValue() - transaction.getValue();
         
         transaction.setTransactionId(transaction.calulateHash());
                 
         // coins are not created in faucet. They're created from each transaction
         if (!transaction.getSender().equals(coinBase.getPublicKey())) {
-            leftOver -= coinBase.getTaxToBePayed(); // sender must pay some tax to coinbase
-            
             TransactionOutput mineNewCoinsToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getCoinsFromFaucet(), transaction.getTransactionId());
-            utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);
-            
-            TransactionOutput taxToCoinbase = new TransactionOutput(coinBase.getPublicKey(), coinBase.getTaxToBePayed(), transaction.getTransactionId());
             utxos.put(mineNewCoinsToCoinbase.getId(), mineNewCoinsToCoinbase);
         }
 

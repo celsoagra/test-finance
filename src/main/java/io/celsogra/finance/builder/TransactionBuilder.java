@@ -5,7 +5,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SignatureException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Map;
@@ -21,6 +20,7 @@ import io.celsogra.finance.dto.TransactionDTO;
 import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.entity.TransactionInput;
 import io.celsogra.finance.entity.TransactionOutput;
+import io.celsogra.finance.exception.NotEnoughMoneyException;
 import io.celsogra.finance.util.CryptUtil;
 
 @Component
@@ -32,8 +32,8 @@ public class TransactionBuilder {
     @Autowired
     private Blockchain blockchain;
 
-    public Transaction build(TransactionDTO dto) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
-        double totalToSpend = dto.getValue() + coinBase.getTaxToBePayed();
+    public Transaction build(TransactionDTO dto) {
+        double totalToSpend = dto.getValue();
         PublicKey sender = dto.getSenderAsPubKey();
         ArrayList<TransactionInput> inputs = getOutuputsAndReturnInputs(sender, totalToSpend);
         Transaction transaction = Transaction.create(dto.getSenderAsPubKey(), dto.getReceiverAsPubKey(), dto.getValue(), inputs);
@@ -76,7 +76,7 @@ public class TransactionBuilder {
         }
         
         if (total < totalToSpend) {
-            
+            throw new NotEnoughMoneyException();
         }
         
         return inputs;

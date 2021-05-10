@@ -17,8 +17,7 @@ public class TransactionOutput implements Serializable {
     private double value;
     private String parentTransactionId;
 
-    public TransactionOutput(PublicKey reciepient, double value, String parentTransactionId)
-            throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public TransactionOutput(PublicKey reciepient, double value, String parentTransactionId) {
         this.reciepient = reciepient;
         this.value = value;
         this.parentTransactionId = parentTransactionId;

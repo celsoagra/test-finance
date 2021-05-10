@@ -25,20 +25,20 @@ public class Block implements Serializable {
     private long timeStamp;
     private Map<String,TransactionOutput> utxos = new HashMap<String,TransactionOutput>();
 
-    public static Block create(String previousHash) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public static Block create(String previousHash) {
         return new Block(previousHash);
     }
     
-    private Block(String previousHash) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    private Block(String previousHash) {
         this.previousHash = previousHash;
         this.timeStamp = new Date().getTime();
     }
 
-    public String calculateHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public String calculateHash() {
         return CryptUtil.applySha256(previousHash + Long.toString(timeStamp) + Integer.toString(transactions.hashCode()) + Integer.toString(utxos.hashCode()) );
     }
     
-    public void setCalculatedHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public void setCalculatedHash() {
         this.hash = calculateHash();
     }
 
