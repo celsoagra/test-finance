@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class Blockchain {
     private ArrayList<Block> blockchain = new ArrayList<Block>();
-    Block lastBlock;
+    private Block lastBlock;
 
     public Block get(int index) {
         return blockchain.get(0);

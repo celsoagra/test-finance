@@ -1,22 +1,25 @@
 package io.celsogra.finance.util;
 
 import java.io.UnsupportedEncodingException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
 
-import io.celsogra.finance.entity.Transaction;
 import io.celsogra.finance.exception.HashGenerationException;
 import io.celsogra.finance.exception.InvalidPrivateOrPublicKeyException;
 import io.celsogra.finance.exception.SignatureGenerationException;
@@ -28,6 +31,8 @@ public class CryptUtil {
     private static final String CHARSET_ENCODING_UTF8 = "UTF-8";
     private static final String SIGNATURE_ALGORITHM = "ECDSA";
     private static final String SIGNATURE_PROVIDER = "BC";
+    private static final String SECURE_RANDOM_ALGORITHM = "SHA1PRNG";
+    private static final String EC_PARAMETER_NAME = "prime192v1";
 
     public static String applySha256(String input) {
         StringBuffer hexString = new StringBuffer();
@@ -46,8 +51,6 @@ public class CryptUtil {
         }
         return hexString.toString();
     }
-    
-
 
     public static byte[] applyECDSASig(PrivateKey privateKey, String input) {
 
@@ -115,26 +118,23 @@ public class CryptUtil {
         
         return key;
     }
-
-    public static String getMerkleRoot(ArrayList<Transaction> transactions) {
-        int count = transactions.size();
-        ArrayList<String> previousTreeLayer = new ArrayList<String>();
-        for (Transaction transaction : transactions) {
-            previousTreeLayer.add(transaction.getTransactionId());
+    
+    public static KeyPair generateKeyPair() {
+        KeyPair keyPair = null;
+        
+        try {
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(SIGNATURE_ALGORITHM, SIGNATURE_PROVIDER);
+            SecureRandom random = SecureRandom.getInstance(SECURE_RANDOM_ALGORITHM);
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec(EC_PARAMETER_NAME);
+            keyGen.initialize(ecSpec, random);
+            keyPair = keyGen.generateKeyPair();
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
+            throw new SignatureGenerationException(
+                    String.format("some problems has occured with signature generation algorithm: %s and provider: %s",
+                            SIGNATURE_ALGORITHM, SIGNATURE_PROVIDER));
         }
-        ArrayList<String> treeLayer = previousTreeLayer;
-        while (count > 1) {
-            treeLayer = new ArrayList<String>();
-            for (int i = 1; i < previousTreeLayer.size(); i++) {
-                treeLayer.add(applySha256(previousTreeLayer.get(i - 1) + previousTreeLayer.get(i)));
-            }
-            count = treeLayer.size();
-            previousTreeLayer = treeLayer;
-        }
-        return (treeLayer.size() == 1) ? treeLayer.get(0) : ""; // merkleRoot
+        
+        return keyPair;
     }
 
-    public static String getDificultyString(int difficulty) {
-        return new String(new char[difficulty]).replace('\0', '0');
-    }
 }

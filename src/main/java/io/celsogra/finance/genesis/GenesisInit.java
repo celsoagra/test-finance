@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.celsogra.finance.base.Blockchain;
+import io.celsogra.finance.base.CoinBase;
 import io.celsogra.finance.builder.TransactionBuilder;
 import io.celsogra.finance.entity.Transaction;
 import lombok.extern.slf4j.Slf4j;
@@ -25,11 +26,13 @@ public class GenesisInit {
 
     @Autowired
     private Blockchain blockchain;
+    
+    @Autowired
+    private CoinBase coinBase;
 
     @PostConstruct
-    private void postConstruct() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException,
-            SignatureException, UnsupportedEncodingException {
-
+    private void postConstruct() {
+        coinBase.generateKeyPair();
         Transaction genesis = TransactionBuilder.buildGenesis();
         blockchain.addGenesisTransaction(genesis);
     }

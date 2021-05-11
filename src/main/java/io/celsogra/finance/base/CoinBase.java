@@ -1,5 +1,6 @@
 package io.celsogra.finance.base;
 
+import java.math.BigDecimal;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
@@ -12,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import io.celsogra.finance.util.CryptUtil;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -34,6 +37,10 @@ public class CoinBase {
         return taxToBePayed;
     }
     
+    public BigDecimal getTaxToBePayedAsBigDecimal() {
+        return BigDecimal.valueOf(taxToBePayed);
+    }
+    
     public double getCoinsFromGenesis() {
         return genesisCoins;
     }
@@ -50,38 +57,17 @@ public class CoinBase {
     }
 
     public PublicKey getPublicKey() {
-        if (!generated) {
-            generateKeyPair();
-        }
-
         return publicKey;
     }
     
     public PrivateKey getPrivateKey() {
-        if (!generated) {
-            generateKeyPair();
-        }
-
         return privateKey;
     }
 
     public void generateKeyPair() {
-        try {
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ECDSA", "BC");
-            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime192v1");
-            // Initialize the key generator and generate a KeyPair
-            keyGen.initialize(ecSpec, random); // 256 bytes provides an acceptable security level
-            KeyPair keyPair = keyGen.generateKeyPair();
-
-            // Set the public and private keys from the keyPair
-            privateKey = keyPair.getPrivate();
-            publicKey = keyPair.getPublic();
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        generated = true;
+        KeyPair keyPair = CryptUtil.generateKeyPair();
+        privateKey = keyPair.getPrivate();
+        publicKey = keyPair.getPublic();
     }
 
 }

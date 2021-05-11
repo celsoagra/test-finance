@@ -2,6 +2,7 @@ package io.celsogra.finance.entity;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 
@@ -27,5 +28,9 @@ public class TransactionOutput implements Serializable {
 
     public boolean belongsTo(PublicKey publicKey) {
         return (publicKey.equals(reciepient));
+    }
+    
+    public BigDecimal getValueAsBigDecimal() {
+        return BigDecimal.valueOf(this.value);
     }
 }

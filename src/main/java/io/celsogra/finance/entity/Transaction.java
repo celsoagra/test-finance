@@ -2,6 +2,7 @@ package io.celsogra.finance.entity;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -38,6 +39,10 @@ public class Transaction implements Serializable {
         this.value = value;
         this.inputs = inputs;
     }
+    
+    public BigDecimal getValueAsBigDecimal() {
+        return BigDecimal.valueOf(this.value);
+    }
 
     public String calulateHash() {
         String input = CryptUtil.getStringFromKey(sender) + CryptUtil.getStringFromKey(reciepient)
@@ -58,14 +63,14 @@ public class Transaction implements Serializable {
     }
 
     public double getInputsValue() {
-        double total = 0;
+        BigDecimal total = BigDecimal.ZERO;
         for (TransactionInput input : inputs) {
             
             if (input.getUtxo() == null)
                 continue; // if Transaction can't be found skip it
-            total += input.getUtxo().getValue();
+            total = total.add( BigDecimal.valueOf(input.getUtxo().getValue()) );
         }
-        return total;
+        return total.doubleValue();
     }
 
 }

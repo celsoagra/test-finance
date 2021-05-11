@@ -1,6 +1,7 @@
 package io.celsogra.finance.service;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -39,27 +40,22 @@ public class WalletServiceImpl implements WalletService {
 
     public double balance(PublicKey wallet) {
         Set<Entry<String, TransactionOutput>> entries = blockchain.getLastBlock().getTransactionOutputEntries();
-        double total = 0;
+        BigDecimal total = BigDecimal.ZERO;
         for (Map.Entry<String, TransactionOutput> item : entries) {
             TransactionOutput utxo = item.getValue();
             if (utxo.belongsTo(wallet)) {
-                total += utxo.getValue();
+                total = total.add( BigDecimal.valueOf(utxo.getValue()) );
             }
         }
 
-        return total;
+        return total.doubleValue();
     }
 
     public double faucet(String wallet) {
         double value = coinBase.getCoinsFromFaucet();
-        
-        try {
-            Transaction transaction = transactionBuilder.buildFaucet(wallet);
-            transactionService.addToBlock(transaction);
-            return value;
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException | UnsupportedEncodingException e) {
-            return 0.0d;
-        }
+        Transaction transaction = transactionBuilder.buildFaucet(wallet);
+        transactionService.addToBlock(transaction);
+        return value;
     }
 
     public void validateBalance(PublicKey wallet, double value) {
